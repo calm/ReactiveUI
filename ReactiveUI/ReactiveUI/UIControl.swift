@@ -9,72 +9,62 @@
 import UIKit
 
 public extension UIControl {
-    
-    convenience init(action: @escaping (UIControl) -> (), forControlEvents events: UIControlEvents) {
+    convenience init(for controlEvents: UIControlEvents, action: @escaping () -> ()) {
         self.init()
-        addAction(action, forControlEvents: events)
-    }
-    
-    convenience init(forControlEvents events: UIControlEvents, action: @escaping (UIControl) -> ()) {
-        self.init()
-        addAction(action, forControlEvents: events)
-    }
-    
-    func addAction(_ action: @escaping (UIControl) -> (), forControlEvents events: UIControlEvents) {
-        removeAction(forControlEvents: events)
-
-        let proxyTarget = RUIControlProxyTarget(action: action)
-        proxyTargets[keyForEvents(events)] = proxyTarget
-        addTarget(proxyTarget, action: RUIControlProxyTarget.actionSelector(), for: events)
+        addControlEvents(controlEvents, action: action)
     }
 
-    func forControlEvents(events: UIControlEvents, addAction action: @escaping (UIControl) -> ()) {
-        addAction(action, forControlEvents: events)
+    func addControlEvents(_ controlEvents: UIControlEvents, action: @escaping () -> ()) {
+        removeAction(for: controlEvents)
+
+        let proxyTarget = ControlProxyTarget(action: action)
+        let key = self.key(for: controlEvents)
+        proxyTargets[key] = proxyTarget
+        addTarget(proxyTarget, action: ControlProxyTarget.actionSelector(), for: controlEvents)
+    }
+
+    func removeAction(for controlEvents: UIControlEvents) {
+        let key = self.key(for: controlEvents)
+        guard let proxyTarget = proxyTargets[key] else { return }
+        removeTarget(proxyTarget, action: ControlProxyTarget.actionSelector(), for: controlEvents)
+        proxyTargets.removeValue(forKey: key)
+    }
+
+    func actionForControlEvent(controlEvents: UIControlEvents) -> (() -> ())? {
+        let key = self.key(for: controlEvents)
+        return proxyTargets[key]?.action
     }
     
-    func removeAction(forControlEvents events: UIControlEvents) {
-        if let proxyTarget = proxyTargets[keyForEvents(events)] {
-            removeTarget(proxyTarget, action: RUIControlProxyTarget.actionSelector(), for: events)
-            proxyTargets.removeValue(forKey: keyForEvents(events))
-        }
+    var actions: [() -> ()] {
+        return [ControlProxyTarget](proxyTargets.values).map({$0.action})
     }
-    
-    func actionForControlEvent(events: UIControlEvents) -> ((UIControl) -> ())? {
-        return proxyTargets[keyForEvents(events)]?.action
-    }
-    
-    var actions: [(UIControl) -> ()] {
-        return [RUIControlProxyTarget](proxyTargets.values).map({$0.action})
-    }
-    
 }
 
 internal extension UIControl {
+    typealias ControlProxyTargets = [String: ControlProxyTarget]
     
-    typealias RUIControlProxyTargets = [String: RUIControlProxyTarget]
-    
-    class RUIControlProxyTarget : RUIProxyTarget {
-        var action: (UIControl) -> ()
+    class ControlProxyTarget : ProxyTarget {
+        var action: () -> ()
         
-        init(action: @escaping (UIControl) -> ()) {
+        init(action: @escaping () -> ()) {
             self.action = action
         }
         
         func performAction(_ control: UIControl) {
-            action(control)
+            action()
         }
     }
     
-    func keyForEvents(_ events: UIControlEvents) -> String {
-        return "UIControlEvents: \(events.rawValue)"
+    func key(for controlEvents: UIControlEvents) -> String {
+        return "calm.ReactiveUI.UIControlEvents.key.\(controlEvents.rawValue)"
     }
 
-    var proxyTargets: RUIControlProxyTargets {
+    var proxyTargets: ControlProxyTargets {
         get {
-            if let targets = objc_getAssociatedObject(self, &RUIProxyTargetsKey) as? RUIControlProxyTargets {
+            if let targets = objc_getAssociatedObject(self, &ProxyTargetsKey) as? ControlProxyTargets {
                 return targets
             } else {
-                return setProxyTargets(RUIControlProxyTargets())
+                return setProxyTargets(ControlProxyTargets())
             }
         }
         set {
@@ -82,8 +72,8 @@ internal extension UIControl {
         }
     }
     
-    private func setProxyTargets(_ newValue: RUIControlProxyTargets) -> RUIControlProxyTargets {
-        objc_setAssociatedObject(self, &RUIProxyTargetsKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    private func setProxyTargets(_ newValue: ControlProxyTargets) -> ControlProxyTargets {
+        objc_setAssociatedObject(self, &ProxyTargetsKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         return newValue
     }
     
