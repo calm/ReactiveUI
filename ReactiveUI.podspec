@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name         = "ReactiveUI"
-  s.version      = "0.0.3"
+  s.version      = "0.1.0"
   s.summary      = "A lightweight replacement for target action with closures, modified from Scream.swift."
   s.homepage     = "https://github.com/zhxnlai/ReactiveUI"
   s.screenshots  = "https://github.com/zhxnlai/ReactiveUI/raw/master/Previews/screenshot.png"
