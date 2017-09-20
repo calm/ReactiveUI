@@ -39,7 +39,7 @@ internal extension Timer {
             if let targets = objc_getAssociatedObject(self, &ProxyTargetsKey) as? TimerProxyTarget {
                 return targets
             } else {
-                return setProxyTargets(TimerProxyTarget(action: {_ in}))
+                return setProxyTargets(TimerProxyTarget(action: {}))
             }
         }
         set {
